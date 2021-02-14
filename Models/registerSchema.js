@@ -9,7 +9,7 @@ module.exports = (sequelizeConfig, Sequelize) => {
             type: Sequelize.STRING,
             allowNull: false,
             validate: {
-                is: /^[A-Za-z0-9]*$/i,
+                is: /^(\w+\s?)*\s*$/,
                 notEmpty: true,
             }
         },
@@ -17,7 +17,7 @@ module.exports = (sequelizeConfig, Sequelize) => {
             type: Sequelize.STRING,
             allowNull: true,
             validate: {
-                is: /^[A-Za-z0-9]*$/i
+                is: /^(\w+\s?)*\s*$/
             }
         },
         address: {

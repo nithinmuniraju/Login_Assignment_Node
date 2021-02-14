@@ -5,6 +5,7 @@ const Op = db.Sequelize.Op;
 const emailSchems = db.register;
 
 const { encrypt, decrypt, validateEmail, validatePassword } = require('../Utils/helper');
+
 exports.registerUser = async (req, res) => {
     try{
         const { first_name , last_name, email, password, mobile_no, address } = req.body;
@@ -33,7 +34,7 @@ exports.registerUser = async (req, res) => {
         res.status(200).send({ auth: true, data: data  });
     } catch(err) {
         console.log('UserControllerRegister::Exception ', err)
-        res.status(400).send({ success: false, error: "Somthing went wrong!!" });
+        res.status(400).send({ success: false, message: "Somthing went wrong!!" });
     }
 }
 
@@ -48,7 +49,7 @@ exports.loginUser = async (req, res, next) => {
         });
 
         if(!userData) {
-            res.status(400).send({ success: false, message: "No user data found" });
+            res.status(400).send({ success: false, message: "No user data found on email: "+ email});
         } else {
             const getHashedPassword = userData.dataValues.password;
             if(getHashedPassword !== "" && typeof getHashedPassword !== "undefined"){
@@ -63,7 +64,7 @@ exports.loginUser = async (req, res, next) => {
                     })
                     req.session.user = userObj;
 
-                    res.status(200).send({ auth: true, token: token });
+                    res.status(200).send({ success: true, token: token });
                 } else {
                     res.status(400).send({ success: false, message: "Invalid password" });
                 }
@@ -71,7 +72,7 @@ exports.loginUser = async (req, res, next) => {
         }
     } catch(err) {
         console.log('UserControllerLogin::Exception ', err)
-        res.status(400).send({ success: false, error: "Somthing went wrong!!" });
+        res.status(400).send({ success: false, message: "Somthing went wrong!!" });
     }
 }
 
@@ -124,15 +125,17 @@ exports.getAllUsers = async (req, res, next) => {
         }
     } catch(err) {
         console.log('UserControllerGetAll::Exception ', err)
-        res.status(400).send({ success: false, error: "Somthing went wrong!!" });
+        res.status(400).send({ success: false, message: "Somthing went wrong!!" });
     }
 }
 
 exports.updateUser = async (req, res, next) => {
     try {
         const getSessionData = JSON.parse(req.session.user);
-
-        if(req.headers.token && req.headers.token === getSessionData.token) {
+        if(!req.headers.token || typeof req.headers.token == "undefined" || req.headers.token == ""){
+            return res.status(400).send({ success: false, message: "Token field is required" });
+        }
+        if(req.headers.token === getSessionData.token) {
             const { first_name , last_name, email, password, mobile_no, address } = req.body;
 
             try {
@@ -145,7 +148,7 @@ exports.updateUser = async (req, res, next) => {
                     })
 
                     if(!getUserData || typeof getUserData === "undefined") {
-                        return res.status(400).send({ success: false, message: "No user found" });
+                        return res.status(400).send({ success: false, message: "No user found with email: "+ email +", Or please login again with updated email"});
                     } else {
                         const hash = encrypt(password);
 
@@ -157,21 +160,29 @@ exports.updateUser = async (req, res, next) => {
                             "mobile_no": mobile_no,
                             "address": address
                         }
-                        const result = await getUserData.update(userDataObj);
+                        const result = await getUserData.update(userDataObj).catch(err => {
+                            if(err && err.parent && err.parent.sqlMessage) {
+                                return res.send({
+                                    success: false,
+                                    message: err.parent.sqlMessage
+                                });
+                            } else {
+                                return res.send({success: false, message: err.message});
+                            }
+                        });
         
                         res.status(200).send({ sucess: true, data: result});
                     }
                 }
             } catch(err) {
-                console.log(err);
                 return res.status(400).send({ success: false, message: "Token has been expired/Invalid" });
             }
         } else {
-            res.status(400).send({ success: false, message: "Token is required" });
+            return res.status(400).send({ success: false, message: "Token has been expired/Invalid" });
         }
     } catch(err) {
         console.log('UserControllerUpdateUser::Exception ', err)
-        res.status(400).send({ success: false, error: "Somthing went wrong!!" });
+        res.status(400).send({ success: false, message: "Somthing went wrong!!" });
     }
 }
 
@@ -240,6 +251,6 @@ exports.searchUser = async (req, res, next) => {
         }
     } catch(err) {
         console.log('UserControllerUpdateUser::Exception ', err)
-        res.status(400).send({ success: false, error: "Somthing went wrong!!" });
+        res.status(400).send({ success: false, message: "Somthing went wrong!!" });
     }
 }
