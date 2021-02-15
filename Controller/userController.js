@@ -194,7 +194,7 @@ exports.updateUser = async (req, res, next) => {
                 return res.status(400).send({ success: false, message: "Token has been expired/Invalid or incorrect data" });
             }
         } else {
-            return res.status(400).send({ success: false, message: "TToken has been expired/Invalid" });
+            return res.status(400).send({ success: false, message: "Token has been expired/Invalid" });
         }
     } catch(err) {
         console.log('UserControllerUpdateUser::Exception ', err)
