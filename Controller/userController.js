@@ -15,7 +15,7 @@ exports.registerUser = async (req, res) => {
         }
 
         if(!validatePassword(password)) {
-            return res.status(400).send({ success: false, message: "Please enter minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character" });
+            return res.status(400).send({ success: false, message: "Please enter password of minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character" });
         }
 
         const hash = encrypt(password);
@@ -41,7 +41,12 @@ exports.registerUser = async (req, res) => {
 exports.loginUser = async (req, res, next) => {
     try {
         const { email, password } = req.body;
-
+        if(!email || typeof email === "undefined" && email === "") {
+            res.status(400).send({ success: false, message: "email field is required"});
+        }
+        if(!password || typeof password === "undefined" && password === "") {
+            res.status(400).send({ success: false, message: "password field is required"});
+        }
         const userData = await emailSchems.findOne({
             where: {
               email: email
@@ -132,11 +137,19 @@ exports.getAllUsers = async (req, res, next) => {
 exports.updateUser = async (req, res, next) => {
     try {
         const getSessionData = JSON.parse(req.session.user);
+
         if(!req.headers.token || typeof req.headers.token == "undefined" || req.headers.token == ""){
             return res.status(400).send({ success: false, message: "Token field is required" });
         }
         if(req.headers.token === getSessionData.token) {
-            const { first_name , last_name, email, password, mobile_no, address } = req.body;
+            const { first_name , last_name, password, mobile_no, address, email } = req.body;
+
+            if(email) {
+                return res.status(400).send({ success: false, message: "Email cannot be updated" });
+            }
+            if(password && !validatePassword(password)) {
+                return res.status(400).send({ success: false, message: "Please enter password of minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character" });
+            }
 
             try {
                 const decoded = jwt.verify(req.headers.token, process.env.SECRET);
@@ -148,15 +161,17 @@ exports.updateUser = async (req, res, next) => {
                     })
 
                     if(!getUserData || typeof getUserData === "undefined") {
-                        return res.status(400).send({ success: false, message: "No user found with email: "+ email +", Or please login again with updated email"});
+                        return res.status(400).send({ success: false, message: "No user found with email: "+ decoded.id +", Or please login again with updated email"});
                     } else {
-                        const hash = encrypt(password);
+                        let hash = "";
+                        if(password) {
+                            hash = encrypt(password);
+                        }
 
                         const userDataObj = {
                             "first_name": first_name,
                             "last_name": last_name,
-                            "email": email,
-                            "password": hash,
+                            "password": hash === "" ? getUserData.dataValues.password : hash,
                             "mobile_no": mobile_no,
                             "address": address
                         }
@@ -175,10 +190,11 @@ exports.updateUser = async (req, res, next) => {
                     }
                 }
             } catch(err) {
-                return res.status(400).send({ success: false, message: "Token has been expired/Invalid" });
+                console.log(err);
+                return res.status(400).send({ success: false, message: "Token has been expired/Invalid or incorrect data" });
             }
         } else {
-            return res.status(400).send({ success: false, message: "Token has been expired/Invalid" });
+            return res.status(400).send({ success: false, message: "TToken has been expired/Invalid" });
         }
     } catch(err) {
         console.log('UserControllerUpdateUser::Exception ', err)
